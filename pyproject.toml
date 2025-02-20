@@ -1,0 +1,16 @@
+[project]
+name = "pisos turisticos"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Alexschwarz86",email = "schwarzalex319@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
