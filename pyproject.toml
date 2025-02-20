@@ -1,16 +1,21 @@
-[project]
-name = "pisos turisticos"
+[tool.poetry]
+name = "chatbot-pisos-turisticos"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "Alexschwarz86",email = "schwarzalex319@gmail.com"}
-]
+description = "Chatbot para pisos turísticos con FastAPI y GPT-4"
+authors = ["Tu Nombre <tuemail@example.com>"]
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-]
 
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"  # 🔹 Esto soluciona el problema con Supabase
+fastapi = "^0.110.0"
+uvicorn = "^0.27.1"
+openai = "^1.12.0"
+redis = "^5.0.1"
+asyncpg = "^0.29.0"
+supabase = "^2.13.0"
+python-dotenv = "^1.0.1"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
