@@ -17,7 +17,13 @@ class ConversationState:
         self.last_response = ""
         self.checkout_date = None  # Si lo supiéramos
         self.is_closed = False
-
+        self.tipo_recomendacion = None  # <--- Agregado aquí
+        self.tipo_cocina = None         # También podrías agregar otros campos
+        self.budget = None
+        self.feedback = []
+        self.ultimo_restaurante = None
+        self.contexto_pendiente = None
+        self.created_at = datetime.utcnow()
 def init_db():
     """
     Inicializa la conexión a la BD real, si la hubiera.
@@ -51,3 +57,22 @@ def close_conversation_if_expired(state: ConversationState) -> ConversationState
         if datetime.utcnow() > expire_time:
             state.is_closed = True
     return state
+
+RESTAURANTES_FAKE = [
+    {"id": 1, "nombre": "Mamma Mia", "tipo_cocina": "italiano", "budget": "barato"},
+    {"id": 2, "nombre": "La Tagliatella", "tipo_cocina": "italiano", "budget": "medio"},
+    {"id": 3, "nombre": "Sushi Lowcost", "tipo_cocina": "japones", "budget": "barato"},
+    {"id": 4, "nombre": "Kyoto Deluxe", "tipo_cocina": "japones", "budget": "caro"},
+]
+
+def query_restaurantes(tipo_cocina, budget, exclude_id=None):
+    results = []
+    for r in RESTAURANTES_FAKE:
+        if exclude_id is not None and r["id"] == exclude_id:
+            continue
+        if tipo_cocina and r["tipo_cocina"] != tipo_cocina:
+            continue
+        if budget and r["budget"] != budget:
+            continue
+        results.append(r)
+    return results

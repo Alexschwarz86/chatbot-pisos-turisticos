@@ -1,34 +1,30 @@
-# app/business_logic.py
+from app.categorias import recomendaciones  # Asegúrate de que el módulo esté en app/categorias/
 
-def handle_intents(conversation_state, analysis_result) -> str:
+def handle_intents(conversation_state, analysis_result, user_message) -> str:
     """
-    Recibe el estado de la conversación y el resultado del análisis NLU.
-    Decide qué hacer con las intenciones y produce un texto de respuesta.
+    Recibe el estado de la conversación, el resultado del análisis NLU y el mensaje original,
+    y decide qué hacer según las intenciones detectadas.
     """
-    intents = analysis_result.get("intenciones", [])
+    intenciones = analysis_result.get("intenciones", [])
     idioma = analysis_result.get("idioma", "desconocido")
     
-    if not intents:
-        # Sin intenciones claras
+    if not intenciones:
         return _sin_intencion_respuesta(idioma)
     
-    # Si hay múltiples intenciones, las procesamos todas
     responses = []
-    for intent in intents:
-        text = dispatch_intent(conversation_state, intent, idioma)
+    # Recorrer cada intención detectada y despacharla
+    for intent in intenciones:
+        text = dispatch_intent(conversation_state, intent, user_message, idioma)
         responses.append(text)
-
-    # Podríamos unificar las respuestas en un solo string (o mandar varias)
+    
     final_response = "\n".join(responses)
-
     return final_response
 
-def dispatch_intent(conversation_state, intent, idioma) -> str:
+def dispatch_intent(conversation_state, intent, user_message, idioma) -> str:
     """
     Envía la intención a la función adecuada. 
-    conversation_state podría usarse para extraer datos del usuario, etc.
+    Se pasa el mensaje del usuario para poder tomar decisiones en funciones específicas (por ejemplo, recomendaciones).
     """
-    # Ejemplo de "catálogo" de intenciones
     if intent == "informacion_alojamiento":
         return proporcionar_normas_casa(idioma)
     elif intent == "problemas_estancia":
@@ -36,21 +32,21 @@ def dispatch_intent(conversation_state, intent, idioma) -> str:
     elif intent == "servicios_adicionales":
         return solicitar_servicio_extra(conversation_state, idioma)
     elif intent == "recomendaciones_personalizadas":
-        return dar_recomendaciones(conversation_state, idioma)
+        # Aquí, según el contenido de user_message, decidimos qué función llamar
+        if "no hay espacio" in user_message.lower():
+            return recomendaciones.handle_no_space(conversation_state)
+        else:
+            return recomendaciones.handle_recomendaciones(conversation_state, user_message)
     elif intent == "descuentos_promociones":
         return descuentos_promociones(conversation_state, idioma)
     elif intent == "alquilar_mas_dias":
         return gestionar_extension_estancia(conversation_state, idioma)
     elif intent == "solicitar_factura":
         return obtener_factura(conversation_state, idioma)
-    # ... Añade más casos
+    else:
+        return f"No sé manejar la intención '{intent}'."
 
-    # Si no coincide
-    return f"No sé manejar la intención '{intent}'."
-
-###############################################################################
-# Funciones "mock" de ejemplo
-###############################################################################
+# Funciones "mock" de ejemplo para otras intenciones
 def proporcionar_normas_casa(idioma):
     if idioma == "en":
         return "Our house rules: No smoking, no loud noises after 10PM..."
@@ -69,11 +65,11 @@ def solicitar_servicio_extra(conversation_state, idioma):
     else:
         return "Podemos ofrecer limpieza adicional o toallas extra. ¡Indícanos qué necesitas!"
 
-def dar_recomendaciones(conversation_state, idioma):
+def descuentos_promociones(conversation_state, idioma):
     if idioma == "en":
-        return "We recommend visiting the city center and trying local cuisine."
+        return "I'm sorry, we do not offer promotions."
     else:
-        return "Te recomendamos visitar el centro de la ciudad y probar la gastronomía local."
+        return "Lo siento, no hacemos descuento."
 
 def gestionar_extension_estancia(conversation_state, idioma):
     if idioma == "en":
@@ -92,9 +88,3 @@ def _sin_intencion_respuesta(idioma):
         return "I'm sorry, I didn't quite catch that. Can you rephrase?"
     else:
         return "Lo siento, no te he entendido. ¿Podrías reformular tu pregunta?"
-
-def descuentos_promociones(descuentos_promociones, idioma):
-    if idioma == "en":
-        return "I'm sorry,no promotion"
-    else:
-        return "Lo siento,no hacemos descuento"
