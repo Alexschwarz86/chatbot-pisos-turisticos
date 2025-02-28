@@ -29,4 +29,4 @@ venv/
 .DS_Store
 
 # Ignorar carpetas de entorno de Poetry
-poetry.lock
+poetry.lock.env
