@@ -16,6 +16,10 @@ supabase = "^2.13.0"
 numpy = "^2.2.3"
 python-dotenv = "^1.0.1"
 openai = "^1.63.2"
+google-auth = "^2.38.0"
+google-auth-oauthlib = "^1.2.1"
+google-auth-httplib2 = "^0.2.0"
+google-api-python-client = "^2.162.0"
 
 [build-system]
 requires = ["poetry-core"]

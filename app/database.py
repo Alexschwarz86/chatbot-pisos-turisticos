@@ -48,6 +48,8 @@ class ConversationState:
 
         # 🔹 Manejo seguro de datos de categorías (Evitar errores en JSON)
         if data and "datos_categoria" in data:
+            if not data["datos_categoria"]:  # Si es NULL o vacío, inicializamos correctamente
+              data["datos_categoria"] = "{}"
             if isinstance(data["datos_categoria"], str):  # Si es una cadena JSON, la cargamos
                 try:
                     self.datos_categoria = json.loads(data["datos_categoria"])
@@ -58,8 +60,9 @@ class ConversationState:
             else:
                 self.datos_categoria = {}  # Si es cualquier otra cosa, aseguramos un diccionario vacío
         else:
+            print("⚠️ `datos_categoria` no encontrado en Supabase, asignando `{}`")
             self.datos_categoria = {}  # Si no hay datos de categoría, inicializamos vacío
-
+       
     def to_dict(self):
         return {
             "user_id": self.user_id,
@@ -106,6 +109,11 @@ def save_conversation_state(state: ConversationState):
     Guarda o actualiza el estado de conversación en Supabase.
     """
     try:
+        # 🔹 Asegurar que `datos_categoria` siempre sea un diccionario
+        if not isinstance(state.datos_categoria, dict):
+            print("⚠️ `datos_categoria` no es un diccionario, inicializando `{}`")
+            state.datos_categoria = {}  # Asegurar que sea un diccionario
+        
         # 🔹 Limpieza del historial
         historial_limpio = []
         for msg in state.historial:
@@ -113,14 +121,12 @@ def save_conversation_state(state: ConversationState):
                 usuario = msg.get("usuario", "")
                 bot = msg.get("bot", "")
 
-                # 🔹 Evitar JSON dentro de JSON en "bot"
-                if isinstance(bot, str):
+                # 🔹 Asegurar que "bot" siempre se almacena como JSON válido
+                if not isinstance(bot, dict):  # Si "bot" no es ya un diccionario
                     try:
-                        bot_json = json.loads(bot)
-                        if isinstance(bot_json, dict):
-                            bot = bot_json  # Convertimos el string JSON en diccionario
-                    except json.JSONDecodeError:
-                        pass  # Si no es JSON, lo dejamos como string
+                        bot = json.loads(bot)  # Intentar convertirlo de string JSON a dict
+                    except (json.JSONDecodeError, TypeError):
+                        bot = {"respuesta": bot}  # Si falla, lo envolvemos en un diccionario
 
                 historial_limpio.append({"usuario": usuario, "bot": bot})
 
@@ -134,10 +140,12 @@ def save_conversation_state(state: ConversationState):
             "checkout_date": state.checkout_date,
             "is_closed": state.is_closed,
             "idioma": state.idioma,
-            "created_at": state.created_at
+            "created_at": state.created_at,
+            "datos_categoria": json.dumps(state.datos_categoria, ensure_ascii=False) if state.datos_categoria else "{}"
         }
 
         # 🔹 DEBUG: Ver qué se está enviando a Supabase
+        print("📌 datos_categoria antes de guardar en Supabase:", json.dumps(state.datos_categoria, indent=4, ensure_ascii=False))
         print("📌 Datos que se intentan guardar en Supabase:", json.dumps(data, indent=4))
 
         # 🔹 Guardar en Supabase
@@ -154,17 +162,6 @@ def save_conversation_state(state: ConversationState):
 ###############################################################################
 # Función para cerrar conversación si ha expirado
 ###############################################################################
-def close_conversation_if_expired(state: ConversationState) -> ConversationState:
-    """
-    Cierra la conversación si ha pasado 1 día después del checkout.
-    """
-    if state.checkout_date:
-        expire_time = datetime.fromisoformat(state.checkout_date) + timedelta(days=1)
-        if datetime.utcnow() > expire_time:
-            state.is_closed = True
-            save_conversation_state(state)  # Guardamos el estado actualizado en Supabase
-    return state
-
 ###############################################################################
 # Base de datos simulada de restaurantes
 ###############################################################################

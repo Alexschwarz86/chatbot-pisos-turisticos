@@ -1,14 +1,32 @@
+# Ignorar archivos de configuración y credenciales
+.env
+.env.local
+.env.production
+.env.development
+.env.*  # Ignorar cualquier otro archivo con formato .env.*
 
-# Ignorar archivos generados automáticamente por Python
+# Ignorar cachés de Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyo
 
-# Ignorar el entorno virtual de Poetry (si existe)
-.venv/
-poetry.lock
-
-# Ignorar archivos de logs o temporales
+# Ignorar archivos de logs
 *.log
-*.tmp
+logs/
+debug.log
+
+# Ignorar dependencias de Python
+venv/
+.venv/
+
+# Ignorar archivos de IDEs (Visual Studio Code, PyCharm)
+.vscode/
+.idea/
+
+# Ignorar archivos de MacOS
+.DS_Store
+
+# Ignorar carpetas de entorno de Poetry
+poetry.lock
