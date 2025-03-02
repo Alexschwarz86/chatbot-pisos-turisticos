@@ -16,7 +16,7 @@ if not api_key:
 client = OpenAI(api_key=api_key)
 
 
-def categorizar_recomendacion(user_id, user_message):
+def categorizar_recomendacion(user_id, user_message,nombre_apartamento):
     """
     Clasifica el mensaje del usuario en una de las siguientes categorías:
     
@@ -88,7 +88,7 @@ def categorizar_recomendacion(user_id, user_message):
         elif category_result.get("Categoria") == "Actividades y Ocio":
             return handle_actividades_ocio(user_id, user_message)
         elif category_result.get("Categoria") == "Transporte y Movilidad":
-            return handle_transporte(user_id, user_message)
+            return handle_transporte(user_id, user_message,nombre_apartamento)
     except Exception as e:
         print(f"❌ Error en clasificación de categoría: {e}")
         return {"Categoria": "Servicios y Otros"}  # Por defecto

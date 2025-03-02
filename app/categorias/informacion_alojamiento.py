@@ -1,78 +1,93 @@
 import os
 import json
 from dotenv import load_dotenv
-from app.database import get_conversation_state, save_conversation_state, supabase
-
+from app.database import get_conversation_state, save_conversation_state
+from openai import OpenAI
+from app.categorias.tipo_informacion.handle_instalaciones import handle_apartment_info
+from app.categorias.tipo_informacion.handle_normas import handle_normas_info
+from app.categorias.tipo_informacion.handle_penalizaciones import handle_penalizacion_info
+# Cargar variables de entorno
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_apartment_info(user_id, user_message, nombre_apartamento):
+# 🔹 Verificar si la clave API está configurada correctamente
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("❌ ERROR: La API Key de OpenAI no está configurada correctamente.")
+client = OpenAI(api_key=api_key)
+
+
+def categorizar_pregunta_informacion(user_id, user_message,nombre_apartamento):
     """
-    Recupera la información del apartamento directamente desde Supabase 
-    y responde con los detalles solicitados de las instalaciones.
+    Clasifica el mensaje del usuario en una de las siguientes categorías:
+
+    1️⃣ **Instalaciones** - Preguntas sobre servicios del apartamento (ej. "¿Tienen WiFi?")
+    2️⃣ **Normas** - Preguntas sobre reglas de convivencia (ej. "¿A qué hora no se puede hacer ruido?")
+    3️⃣ **Penalizaciones** - Preguntas sobre consecuencias de ciertas acciones (ej. "¿Qué pasa si pierdo las llaves?")
     """
 
-    # 🔹 **1️⃣ Recuperar datos del apartamento desde Supabase**
-    response = supabase.table("apartamentos").select("instalaciones").eq("nombre", nombre_apartamento).execute()
-    
-    if not response.data:
-        return f"❌ No hemos encontrado información sobre el apartamento '{nombre_apartamento}' en nuestra base de datos."
+    # 🔹 **1️⃣ Obtener estado del usuario (Memoria en Supabase)**
+    conv_state = get_conversation_state(user_id)
 
-    # 🔹 **2️⃣ Extraer las instalaciones del apartamento**
-    instalaciones = response.data[0].get("instalaciones", {})
-    if not instalaciones:
-        return f"❌ No hay detalles de las instalaciones disponibles para el apartamento '{nombre_apartamento}'."
+    # 🔹 **2️⃣ Construcción de memoria híbrida (Supabase + Ventana de tokens)**
+    historial = []
+    for msg in conv_state.historial[-10:]:  
+        if isinstance(msg, dict) and "usuario" in msg and "bot" in msg:
+            historial.append({"role": "user", "content": msg["usuario"]})
 
-    # 🔹 **3️⃣ Generar el prompt para OpenAI**
-    info_prompt = f"""
-   Eres un asistente de apartamentos turísticos.  
-📌 **Responde SOLO con información del apartamento basada en la pregunta del usuario.**  
-📌 **Usa exclusivamente los datos del JSON de instalaciones proporcionado.**  
-📌 **Si la información no está en el JSON, responde que no tienes datos sobre eso.**  
-📌 **NO inventes información ni asumas nada.**  
+            # Convertir bot a string si es un diccionario
+            bot_response = msg["bot"]
+            if isinstance(bot_response, dict):
+                bot_response = json.dumps(bot_response, ensure_ascii=False)  
 
-🔹 **Apartamento asignado:** {nombre_apartamento}  
-🔹 **Lista de instalaciones del apartamento:**  
+            historial.append({"role": "assistant", "content": bot_response})
 
-El siguiente JSON contiene TODAS las instalaciones disponibles en el apartamento. Usa esta información para responder la pregunta del usuario. Si la instalación no está en la lista, responde que no está disponible.
+    # 📌 **3️⃣ Generar el prompt para OpenAI**
+    classification_prompt = f"""
+    Eres un asistente experto en clasificar preguntas de usuarios sobre su estancia en un apartamento turístico.  
+    📌 **Tu tarea es analizar el mensaje y clasificarlo en una de las siguientes categorías:**  
 
-📌 **Instalaciones del apartamento en JSON:**  
-{json.dumps(instalaciones, ensure_ascii=False, indent=2)}
+    1️⃣ **Instalaciones** - Preguntas sobre servicios y comodidades del apartamento (ej. "¿Tienen WiFi?", "¿Hay secador de pelo?").  
+    2️⃣ **Normas** - Preguntas sobre reglas y comportamiento dentro del apartamento (ej. "¿A qué hora hay que hacer silencio?").  
+    3️⃣ **Penalizaciones** - Preguntas sobre consecuencias de ciertas acciones (ej. "¿Cuánto cuesta perder las llaves?").  
 
-🔹 **Pregunta del usuario:**  
-"{user_message}"
+    📌 **Reglas importantes:**  
+    🔹 **Usa solo las categorías indicadas.**  
+    🔹 **Si el mensaje no encaja exactamente en una categoría, elige la más cercana.**  
 
-🔹 **Ejemplo de respuesta esperada:**  
-- Usuario: "¿Hay secador de pelo?"  
-- Respuesta: "Sí, este apartamento dispone de secador de pelo en el baño."  
-- Usuario: "¿Tiene piscina?"  
-- Respuesta: "No, este apartamento no dispone de piscina."  
+    📌 **Historial de conversación reciente:**  
+    {json.dumps(historial, ensure_ascii=False, indent=2)}
 
-🔹 **IMPORTANTE:** Devuelve una respuesta directa y breve sin explicaciones adicionales.
-"""
-    print(f"Open ia respuestaaaaaaa:{info_prompt}")
-    # 🔹 **4️⃣ Llamada a OpenAI para generar la respuesta**
-    from openai import OpenAI
-    api_key = os.getenv("OPENAI_API_KEY")
-    client = OpenAI(api_key=api_key)
+    📌 **Mensaje del usuario:**  
+    "{user_message}"  
 
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=[{"role": "system", "content": info_prompt}],
-        max_tokens=200,
-        temperature=0
-    )
+    🔹 **Devuelve SIEMPRE un JSON puro con esta estructura exacta (sin texto adicional, sin backticks):**  
+    {{
+      "Categoria": "<nombre de la categoría>"
+    }}
+    """
 
-    response_text = response.choices[0].message.content.strip()
-    print(f"📌 Respuesta generada por OpenAI: {response_text}")
+    # 🔹 **4️⃣ Llamada a OpenAI**
+    try:
+        classification_response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "system", "content": classification_prompt}],
+            max_tokens=50,
+            temperature=0
+        )
+        
+        response_text = classification_response.choices[0].message.content.strip()
+        category_result = json.loads(response_text)
 
-    return response_text
+        print("📌 Respuesta de OpenAI para clasificación:", category_result)
 
-# 🔹 **Ejemplo de uso**
-if __name__ == "__main__":
-    user_id = "44"  # ID de ejemplo
-    nombre_apartamento = "Apartamento Sol"  # Nombre del apartamento asignado
-    user_message = "¿El apartamento tiene aire acondicionado y WiFi?"  # Pregunta de ejemplo
-
-    response = handle_apartment_info(user_id, user_message, nombre_apartamento)
-    print(response)
+        # 🔹 **5️⃣ Redirigir la consulta a la función correspondiente**
+        if category_result.get("Categoria") == "Instalaciones":
+            return handle_apartment_info(user_id, user_message,nombre_apartamento)
+        elif category_result.get("Categoria") == "Normas":
+            return handle_normas_info(user_id, user_message,nombre_apartamento)
+        elif category_result.get("Categoria") == "Penalizaciones":
+            return handle_penalizacion_info(user_id, user_message,nombre_apartamento)
+    except Exception as e:
+        print(f"❌ Error en clasificación de categoría: {e}")
+        return {"Categoria": "No clasificado"}  # Por defecto

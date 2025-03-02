@@ -66,8 +66,8 @@ def analyze_message(user_message: str, user_id: str) -> dict:
     .replace("{tipo_comida}", conv_state.datos_categoria.get("tipo_cocina", "No definido") if hasattr(conv_state, "datos_categoria") else "No definido") \
     .replace("{budget}", conv_state.datos_categoria.get("budget", "No definido") if hasattr(conv_state, "datos_categoria") else "No definido") \
     .replace("{categoria_activa}", conv_state.categoria_activa if hasattr(conv_state, "categoria_activa") else "desconocido") \
-    .replace("{last_response}", conv_state.last_response if hasattr(conv_state, "last_response") else "Ninguna") \
-    .replace("{is_closed}", str(conv_state.is_closed if hasattr(conv_state, "is_closed") else False)) \
+    .replace("{last_response}", str(conv_state.last_response) if hasattr(conv_state, "last_response") and conv_state.last_response is not None else "Ninguna") \
+    .replace("{last_response}", str(conv_state.last_response) if hasattr(conv_state, "last_response") and conv_state.last_response is not None else "Ninguna") \
     .replace("{historial}", json.dumps(historial, ensure_ascii=False, indent=2)) \
     .replace("{mensaje_usuario}", user_message)
     # 🔹 4️⃣ Llamada a la API de OpenAI

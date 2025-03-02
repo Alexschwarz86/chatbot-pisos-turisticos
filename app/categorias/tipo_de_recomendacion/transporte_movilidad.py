@@ -8,7 +8,7 @@ from openai import OpenAI
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
-def handle_transporte(user_id, user_message):
+def handle_transporte(user_id, user_message,):
     """
     Maneja solicitudes de transporte utilizando solo GPT-4 sin APIs externas.
     """

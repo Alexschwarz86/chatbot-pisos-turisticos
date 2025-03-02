@@ -81,26 +81,21 @@ class ConversationState:
 ###############################################################################
 
 def get_conversation_state(user_id: str):
-    """
-    Recupera el estado de conversación desde Supabase o lo crea si no existe.
-    """
-   
     response = supabase.table("conversation_state").select("*").eq("user_id", user_id).execute()
-    print("📌 Respuesta de Supabase:", response.data)
     
     if response.data:
         data = response.data[0]
-        print("📌 Usuario encontrado en Supabase. Datos cargados:", data)
-
-        # ✅ Pasamos `data` directamente a `ConversationState`
+        
+        print("📌 Usuario encontrado en Supabase. Datos cargados:", json.dumps(data, indent=4, ensure_ascii=False))  # <-- NUEVO PRINT
+        
         return ConversationState(user_id=data["user_id"], data=data)
     
-    # ⚠️ Si no existe en Supabase, creamos un nuevo estado para el usuario
     print(f"⚠️ Usuario {user_id} no encontrado en Supabase. Creando nuevo estado...")
-    new_state = ConversationState(user_id)  # Creamos una nueva instancia con valores predeterminados
-    save_conversation_state(new_state)  # Guardamos en Supabase antes de retornarlo
-    return new_state  # Devolvemos el nuevo estadonuevo estado
-
+    
+    new_state = ConversationState(user_id)
+    save_conversation_state(new_state)  # Guardar antes de devolverlo
+    
+    return new_state
 ###############################################################################
 # Función para guardar el estado de conversación en Supabase
 ###############################################################################

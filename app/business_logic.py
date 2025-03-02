@@ -2,7 +2,7 @@ from app.database import get_conversation_state, save_conversation_state
 from app.categorias.recomendaciones import categorizar_recomendacion
 from app.categorias.manejo_limpieza import handle_cleaning_request 
 from app.categorias.averia_estancia import handle_issue_report
-from app.categorias.informacion_alojamiento import handle_apartment_info
+from app.categorias.informacion_alojamiento import categorizar_pregunta_informacion
 def handle_intents(user_id, analysis_result, user_message, conv_state, nombre_apartamento) -> str:
     """
     Recibe el ID de usuario, el resultado del análisis NLU y el mensaje original.
@@ -26,7 +26,7 @@ def handle_intents(user_id, analysis_result, user_message, conv_state, nombre_ap
         responses.append(text)
 
     # 🔹 **3️⃣ Guardar conversación actualizada en Supabase**
-    save_conversation_state(conversation_state)
+   
 
     return "\n".join([str(resp) if isinstance(resp, dict) else resp for resp in responses])
 
@@ -39,7 +39,7 @@ def dispatch_intent(conversation_state, intent, user_message, idioma,nombre_apar
     idioma = idioma if idioma in ["es", "en"] else "es"
 
     if intent == "informacion_alojamiento":
-        return handle_apartment_info(conversation_state.user_id, user_message, nombre_apartamento)  # ✅ Corrección
+        return categorizar_pregunta_informacion(conversation_state.user_id, user_message, nombre_apartamento)  # ✅ Corrección
 
     elif intent == "averia_estancia":
         return handle_issue_report(conversation_state.user_id, user_message)
@@ -48,7 +48,7 @@ def dispatch_intent(conversation_state, intent, user_message, idioma,nombre_apar
         return handle_cleaning_request(conversation_state,user_message)
 
     elif intent == "recomendaciones_personalizadas":
-     return categorizar_recomendacion(conversation_state.user_id, user_message)
+     return categorizar_recomendacion(conversation_state.user_id, user_message,nombre_apartamento)
 
     elif intent == "descuentos_promociones":
         return descuentos_promociones(idioma)
