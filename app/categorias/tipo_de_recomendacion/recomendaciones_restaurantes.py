@@ -40,12 +40,12 @@ def handle_recomendaciones(numero, user_message,):
     🔹 **NO devuelvas texto plano, siempre responde en formato JSON sin backticks.**  
 
     📌 **Estructura de respuesta esperada:**
-    {
+    {{
         "tipo_cocina": "<tipo de comida o 'No definido'>",
         "budget": "<presupuesto o 'No definido'>",
         "mas_informacion": "<información extra o 'No definido'>",
         "respuesta_al_cliente": "<pregunta para el usuario o null>"
-    }
+    }}
 
     📌 **Datos actuales en memoria:**  
     - **Tipo de comida:** {conv_state.datos_categoria.get("tipo_cocina", "No definido")}
@@ -93,7 +93,9 @@ def handle_recomendaciones(numero, user_message,):
 
         # 📌 Debugging: Verificar si se actualiza correctamente
         print("📌 datos_categoria actualizado antes de guardar ya te he pillado:", json.dumps(conv_state.datos_categoria, indent=4, ensure_ascii=False))
-
+        conversation_data = conv_state.to_dict()
+        print("📌 Datos que se van a guardar en Supabase:", json.dumps(conversation_data, indent=4, ensure_ascii=False))
+        
         # Guardamos la nueva información en Supabase
         save_dynamic_state(conv_state.to_dict())
     else:

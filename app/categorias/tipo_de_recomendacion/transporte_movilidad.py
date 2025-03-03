@@ -8,7 +8,7 @@ from openai import OpenAI
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
-def handle_transporte(numero_telefono, user_message):
+def handle_transporte(numero_telefono, user_message,nombre_apartamento):
     """
     Maneja solicitudes de transporte utilizando solo GPT-4 sin APIs externas.
     """
@@ -18,7 +18,7 @@ def handle_transporte(numero_telefono, user_message):
 
     # 🔹 **2️⃣ Construcción de memoria híbrida**
     historial = []
-    for msg in conv_state["historial"][-10:]:  
+    for msg in conv_state.historial[-10:]:  # ✅ Corregido: usar `conv_state.historial`
         if isinstance(msg, dict) and "usuario" in msg and "bot" in msg:
             historial.append({"role": "user", "content": str(msg["usuario"])})
             bot_response = msg["bot"]
@@ -47,9 +47,9 @@ def handle_transporte(numero_telefono, user_message):
 
 
     📌 **Datos actuales en memoria:**  
-    - **Origen:** {conv_state["datos_categoria"].get("origen", "No definido")}
-    - **Destino:** {conv_state["datos_categoria"].get("destino", "No definido")}
-    - **Tipo de transporte preferido:** {conv_state["datos_categoria"].get("transporte", "No definido")}
+    - **Origen:** {conv_state.datos_categoria.get("origen", "No definido")}
+    - **Destino:** {conv_state.datos_categoria.get("destino", "No definido")}
+    - **Tipo de transporte preferido:** {conv_state.datos_categoria.get("transporte", "No definido")}
 
     📌 **Conversación Reciente (Ventana de Tokens)**:
     {json.dumps(historial, ensure_ascii=False, indent=2)}
@@ -93,12 +93,12 @@ def handle_transporte(numero_telefono, user_message):
 
     # 🔹 **7️⃣ Actualizar y guardar la información en memoria dinámica**
     if isinstance(result, dict):  
-        conv_state["datos_categoria"]["origen"] = result.get("origen", conv_state["datos_categoria"].get("origen", "No definido"))
-        conv_state["datos_categoria"]["destino"] = result.get("destino", conv_state["datos_categoria"].get("destino", "No definido"))
-        conv_state["datos_categoria"]["transporte"] = result.get("transporte", conv_state["datos_categoria"].get("transporte", "No definido"))
+        conv_state.datos_categoria["origen"] = result.get("origen", conv_state.datos_categoria.get("origen", "No definido"))
+        conv_state.datos_categoria["destino"] = result.get("destino", conv_state.datos_categoria.get("destino", "No definido"))
+        conv_state.datos_categoria["transporte"] = result.get("transporte", conv_state.datos_categoria.get("transporte", "No definido"))
 
         # 📌 Debugging: Verificar actualización correcta
-        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state["datos_categoria"], indent=4, ensure_ascii=False))
+        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state.datos_categoria, indent=4, ensure_ascii=False))
 
         # Guardamos la nueva información en Supabase
         save_dynamic_state(conv_state.to_dict())

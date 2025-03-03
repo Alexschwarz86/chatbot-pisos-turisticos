@@ -16,9 +16,9 @@ Eres un asistente que clasifica mensajes en función de su intención.
 NO clasifiques mensajes individualmente. Siempre analiza el contexto previo antes de decidir la categoría.  
 
 ## 📌 **CATEGORÍAS DISPONIBLES**:
-1️⃣ **informacion_alojamiento** - Preguntas sobre características del alojamiento (wifi, toallas, normas, ubicación, etc.)  
+1️⃣ **informacion_alojamiento** - Preguntas sobre características del alojamiento (wifi, toallas, normas, penalizaciones, ubicación, etc.)  
 2️⃣ **averia_estancia** - Reportes de problemas o averías en la estancia  
-3️⃣ **servicios_adicionales** - Cuando la persona pregunta sobre servicios limpieza, toallas, etc.  
+3️⃣ **servicios_adicionales** - Cuando la persona pregunta sobre servicios limpieza, toallas, tranporte privado(Si la persona te pregunte si le pueden ir a buscar o llevar algun lugar).  
 4️⃣ **recomendaciones_personalizadas** - Preguntas sobre turismo, comida y actividades en la zona  
 5️⃣ **alquilar_mas_dias** - Peticiones para extender la estancia  
 6️⃣ **descuentos_promociones** - Preguntas sobre ofertas y descuentos  
@@ -60,7 +60,7 @@ def analyze_message(user_message: str, numero: str) -> dict:
 
     print(f"📌 Estado de idioma antes del prompt: {conv_state.idioma}")
     print("📌 Historial enviado a OpenAI:", json.dumps(historial, indent=2, ensure_ascii=False))
-
+    print("📌 Prompt enviado a OpenAI:\n", PROMPT_TEMPLATE)
     # ✅ Asegurar que `datos_categoria` sea un diccionario antes de acceder a `.get()`
     if not isinstance(conv_state.datos_categoria, dict):
         try:

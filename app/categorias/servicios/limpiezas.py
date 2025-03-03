@@ -7,7 +7,7 @@ from app.database import get_dynamic_state, save_dynamic_state
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_cleaning_request(numero, user_message):
+def handle_limpieza(numero, user_message):
     """
     Maneja solicitudes de limpieza en la estancia.
     Pregunta los datos faltantes y agenda cuando toda la información esté completa.
@@ -70,7 +70,7 @@ def handle_cleaning_request(numero, user_message):
         conv_state["datos_categoria"]["fecha"] = result.get("fecha", fecha)
         conv_state["datos_categoria"]["hora"] = result.get("hora", hora)
 
-        save_dynamic_state(conv_state)  # Guardamos en Supabase
+        save_dynamic_state(conv_state.to_dict)  # Guardamos en Supabase
 
     # 🔹 **7️⃣ Si falta información, preguntar al usuario**
     if result.get("respuesta_al_cliente") is not None:
@@ -85,5 +85,5 @@ if __name__ == "__main__":
     numero = "644123456"  # Simulación de número de teléfono en lugar de user_id
     user_message = "¿Podrían limpiar mi apartamento el próximo lunes a las 10 de la mañana?"  # Mensaje de ejemplo
 
-    response = handle_cleaning_request(numero, user_message)
+    response = handle_limpieza(numero, user_message)
     print(response)

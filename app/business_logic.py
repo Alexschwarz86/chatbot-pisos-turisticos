@@ -1,7 +1,7 @@
 from app.database import get_dynamic_state, save_dynamic_state
 from openai import OpenAI
 from app.categorias.recomendaciones import categorizar_recomendacion
-from app.categorias.manejo_limpieza import handle_cleaning_request 
+from app.categorias.servicios_adicionales import categorizar_servicio_adicional 
 from app.categorias.averia_estancia import handle_issue_report
 from app.categorias.informacion_alojamiento import categorizar_pregunta_informacion
 
@@ -47,7 +47,7 @@ def dispatch_intent(conversation_state, intent, user_message, idioma, nombre_apa
         return handle_issue_report(conversation_state.numero_telefono, user_message)
 
     elif intent == "servicios_adicionales":
-        return handle_cleaning_request(conversation_state, user_message)
+        return categorizar_servicio_adicional(conversation_state, user_message)
 
     elif intent == "recomendaciones_personalizadas":
         return categorizar_recomendacion(conversation_state.numero_telefono, user_message, nombre_apartamento)

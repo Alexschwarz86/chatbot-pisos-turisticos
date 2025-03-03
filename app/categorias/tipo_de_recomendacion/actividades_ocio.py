@@ -18,7 +18,7 @@ def handle_actividades_ocio(numero_telefono, user_message):
 
     # 🔹 **2️⃣ Construcción de memoria híbrida (Supabase + Ventana de tokens)**
     historial = []
-    for msg in conv_state["historial"][-10:]:  
+    for msg in conv_state.historial[-10:]:  # ✅ Corregido: Usar `conv_state.historial`
         if isinstance(msg, dict) and "usuario" in msg and "bot" in msg:
             historial.append({"role": "user", "content": str(msg["usuario"])})  # ✅ Asegurar que sea string
             bot_response = msg["bot"]
@@ -47,9 +47,9 @@ def handle_actividades_ocio(numero_telefono, user_message):
     }}
 
     📌 **Datos actuales en memoria:**  
-    - **Día de la actividad:** {conv_state["datos_categoria"].get("dia", "No definido")}
-    - **Tipo de grupo:** {conv_state["datos_categoria"].get("tipo_grupo", "No definido")}
-    - **Información adicional:** {conv_state["datos_categoria"].get("mas_informacion", "No definido")}
+    - **Día de la actividad:** {conv_state.datos_categoria.get("dia", "No definido")}
+    - **Tipo de grupo:** {conv_state.datos_categoria.get("tipo_grupo", "No definido")}
+    - **Información adicional:** {conv_state.datos_categoria.get("mas_informacion", "No definido")}
 
     📌 **Conversación Reciente (Ventana de Tokens)**:
     {json.dumps(historial, ensure_ascii=False, indent=2)}
@@ -85,12 +85,12 @@ def handle_actividades_ocio(numero_telefono, user_message):
 
     # 🔹 **7️⃣ Actualizar y guardar la información en `dinamic`**
     if isinstance(result, dict):  # Verificar que result sea un diccionario
-        conv_state["datos_categoria"]["dia"] = result.get("dia", conv_state["datos_categoria"].get("dia", "No definido"))
-        conv_state["datos_categoria"]["tipo_grupo"] = result.get("tipo_grupo", conv_state["datos_categoria"].get("tipo_grupo", "No definido"))
-        conv_state["datos_categoria"]["mas_informacion"] = result.get("mas_informacion", conv_state["datos_categoria"].get("mas_informacion", "No definido"))
+        conv_state.datos_categoria["dia"] = result.get("dia", conv_state.datos_categoria.get("dia", "No definido"))
+        conv_state.datos_categoria["tipo_grupo"] = result.get("tipo_grupo", conv_state.datos_categoria.get("tipo_grupo", "No definido"))
+        conv_state.datos_categoria["mas_informacion"] = result.get("mas_informacion", conv_state.datos_categoria.get("mas_informacion", "No definido"))
 
         # 📌 Debugging: Verificar si se actualiza correctamente
-        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state["datos_categoria"], indent=4, ensure_ascii=False))
+        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state.datos_categoria, indent=4, ensure_ascii=False))
 
         # Guardamos la nueva información en Supabase
         save_dynamic_state(conv_state.to_dict())

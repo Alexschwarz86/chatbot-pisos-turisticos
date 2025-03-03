@@ -20,7 +20,7 @@ def handle_issue_report(numero, user_message):
     descripcion = conv_state.datos_categoria.get("descripcion", "No definido")
     # 🔍 **Debugging: Ver datos en memoria**
     print(f"📌 user_message recibido: {user_message}")
-    print(f"📌 Estado actual en memoria: {conv_state['datos_categoria']}")
+    print(f"📌 Estado actual en memoria: {conv_state.datos_categoria}")
 
     # 🔹 **3️⃣ Generar el prompt para OpenAI**
     issue_prompt = f"""
