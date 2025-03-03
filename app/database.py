@@ -1,7 +1,7 @@
 from supabase import create_client, Client
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,147 +19,168 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 ###############################################################################
 # Clase para representar el estado de conversación
 ###############################################################################
+from datetime import datetime
+import json
+
 class ConversationState:
-    def __init__(self, user_id, categoria_activa="recomendaciones_restaurantes", data=None):
-        self.user_id = user_id
-        self.categoria_activa = categoria_activa  # Se inicializa correctamente
+    def __init__(self, numero_telefono, categoria_activa="recomendaciones_restaurantes", data=None):
+        self.numero_telefono = numero_telefono
+        self.categoria_activa = categoria_activa
 
         # 🔹 Manejo de datos adicionales
         self.last_message = data.get("last_message", "") if data else ""
-        self.last_response = data.get("last_response", "") if data else ""
         self.checkout_date = data.get("checkout_date") if data else None
         self.is_closed = data.get("is_closed", False) if data else False
         self.idioma = data.get("idioma", "es") if data else "es"
         self.created_at = data["created_at"] if data and "created_at" in data else datetime.utcnow().isoformat()
 
         # 🔹 Historial seguro (Manejo correcto de listas y JSON)
+        self.historial = []
         if data and "historial" in data:
-            if isinstance(data["historial"], str):  # Si es una cadena JSON, la cargamos
+            if isinstance(data["historial"], str):
                 try:
                     self.historial = json.loads(data["historial"])
                 except (json.JSONDecodeError, TypeError):
-                    self.historial = []  # Si hay un error, asignamos una lista vacía
-            elif isinstance(data["historial"], list):  # Si ya es una lista, la asignamos directamente
+                    self.historial = []
+            elif isinstance(data["historial"], list):
                 self.historial = data["historial"]
             else:
-                self.historial = []  # Si es cualquier otra cosa, aseguramos una lista vacía
-        else:
-            self.historial = []  # Si no hay historial, inicializamos con una lista vacía
+                self.historial = []
 
-        # 🔹 Manejo seguro de datos de categorías (Evitar errores en JSON)
-        if data and "datos_categoria" in data:
-            if not data["datos_categoria"]:  # Si es NULL o vacío, inicializamos correctamente
-              data["datos_categoria"] = "{}"
-            if isinstance(data["datos_categoria"], str):  # Si es una cadena JSON, la cargamos
+        # 🔹 Manejo seguro de datos de categorías
+        self.datos_categoria = {}
+        if data:
+            raw_datos_categoria = data.get("datos_categoria", "{}")
+            if isinstance(raw_datos_categoria, str):
                 try:
-                    self.datos_categoria = json.loads(data["datos_categoria"])
+                    self.datos_categoria = json.loads(raw_datos_categoria)
                 except (json.JSONDecodeError, TypeError):
-                    self.datos_categoria = {}  # Si hay error, asignamos diccionario vacío
-            elif isinstance(data["datos_categoria"], dict):  # Si ya es un diccionario, lo usamos directamente
-                self.datos_categoria = data["datos_categoria"]
+                    self.datos_categoria = {}
+            elif isinstance(raw_datos_categoria, dict):
+                self.datos_categoria = raw_datos_categoria
             else:
-                self.datos_categoria = {}  # Si es cualquier otra cosa, aseguramos un diccionario vacío
+                self.datos_categoria = {}
         else:
             print("⚠️ `datos_categoria` no encontrado en Supabase, asignando `{}`")
-            self.datos_categoria = {}  # Si no hay datos de categoría, inicializamos vacío
-       
+            self.datos_categoria = {}
+
     def to_dict(self):
+        """Convierte el objeto en un diccionario para guardarlo en la base de datos."""
         return {
-            "user_id": self.user_id,
-            "categoria_activa": self.categoria_activa,  # Se guarda correctamente
+            "numero_telefono": self.numero_telefono,
+            "categoria_activa": self.categoria_activa,
             "last_message": self.last_message,
-            "last_response": self.last_response,
             "checkout_date": self.checkout_date,
             "is_closed": self.is_closed,
-            "historial": json.dumps(self.historial) if isinstance(self.historial, list) else "[]",
-            "datos_categoria": json.dumps(self.datos_categoria) if isinstance(self.datos_categoria, dict) else "{}",
+            "historial": json.dumps(self.historial, ensure_ascii=False) if isinstance(self.historial, list) else "[]",
+            "datos_categoria": json.dumps(self.datos_categoria, ensure_ascii=False) if isinstance(self.datos_categoria, dict) else "{}",
             "idioma": self.idioma,
             "created_at": self.created_at
         }
 ###############################################################################
 # Función para obtener el estado de conversación desde Supabase
 ###############################################################################
-
-def get_conversation_state(user_id: str):
-    response = supabase.table("conversation_state").select("*").eq("user_id", user_id).execute()
+def get_dynamic_state(numero_telefono: str) -> ConversationState:
+    """
+    Obtiene solo los datos dinámicos del usuario desde `dinamicos`.
+    Si no existe, lo crea con valores predeterminados.
+    """
+    response = supabase.table("dinamicos").select("*").eq("numero_telefono", numero_telefono).execute()
     
     if response.data:
         data = response.data[0]
+        print(f"📌 Usuario {numero_telefono} encontrado en `dinamicos`. Datos cargados.")
+
+        # 🔹 Asegurar que historial sea una lista válida
+        if "historial" in data:
+            if isinstance(data["historial"], str):
+                try:
+                    data["historial"] = json.loads(data["historial"])  # Convertir de JSON a lista
+                except json.JSONDecodeError:
+                    print(f"⚠️ Error al convertir historial de {numero_telefono}, inicializando lista vacía.")
+                    data["historial"] = []
+            elif not isinstance(data["historial"], list):
+                data["historial"] = []  # Si no es lista, forzar lista vacía
         
-        print("📌 Usuario encontrado en Supabase. Datos cargados:", json.dumps(data, indent=4, ensure_ascii=False))  # <-- NUEVO PRINT
-        
-        return ConversationState(user_id=data["user_id"], data=data)
+        else:
+            data["historial"] = []  # Si no existe la clave, inicializar con lista vacía
+
+        # 🔹 Asegurar que `datos_categoria` sea un diccionario válido
+        if "datos_categoria" in data:
+            if isinstance(data["datos_categoria"], str):
+                try:
+                    data["datos_categoria"] = json.loads(data["datos_categoria"])  # Convertir de JSON a dict
+                except json.JSONDecodeError:
+                    print(f"⚠️ Error al convertir `datos_categoria` de {numero_telefono}, inicializando diccionario vacío.")
+                    data["datos_categoria"] = {}
+            elif not isinstance(data["datos_categoria"], dict):
+                data["datos_categoria"] = {}  # Si no es dict, forzar a dict vacío
+
+        else:
+            data["datos_categoria"] = {}  # Si no existe la clave, inicializar con dict vacío
+
+        return ConversationState(numero_telefono, data=data)  # ✅ Devuelve un objeto correctamente
     
-    print(f"⚠️ Usuario {user_id} no encontrado en Supabase. Creando nuevo estado...")
-    
-    new_state = ConversationState(user_id)
-    save_conversation_state(new_state)  # Guardar antes de devolverlo
-    
+    # 🔹 Si el usuario no existe, creamos una nueva entrada
+    print(f"⚠️ Usuario {numero_telefono} no tiene datos dinámicos. Creando nuevo estado...")
+    new_state = ConversationState(numero_telefono)
+
+    # Guardar en Supabase
+    save_dynamic_state(new_state.to_dict())
+
     return new_state
+###############################################################################
+# Función para obtener el estado estático basado en el número de teléfono
+###############################################################################
+
+def get_user_static_state(numero_telefono: str):
+    """
+    Obtiene los datos estáticos del usuario en función de su número de teléfono.
+    """
+    response = supabase.table("estaticos").select("*").eq("numero_telefono", numero_telefono).execute()
+    
+    if response.data:
+        data = response.data[0]
+        print(f"📌 Usuario con teléfono {numero_telefono} encontrado en `estaticos`. Datos cargados.")
+        return data
+    else:
+        print(f"⚠️ Usuario con teléfono {numero_telefono} no encontrado en `estaticos`.")
+        return None
+
 ###############################################################################
 # Función para guardar el estado de conversación en Supabase
 ###############################################################################
-def save_conversation_state(state: ConversationState):
+
+def save_dynamic_state(state):
     """
-    Guarda o actualiza el estado de conversación en Supabase.
+    Guarda solo los datos dinámicos del usuario en `conversaciones`.
     """
     try:
-        # 🔹 Asegurar que `datos_categoria` siempre sea un diccionario
-        if not isinstance(state.datos_categoria, dict):
-            print("⚠️ `datos_categoria` no es un diccionario, inicializando `{}`")
-            state.datos_categoria = {}  # Asegurar que sea un diccionario
-        
-        # 🔹 Limpieza del historial
-        historial_limpio = []
-        for msg in state.historial:
-            if isinstance(msg, dict):  # Asegurar que sea un diccionario
-                usuario = msg.get("usuario", "")
-                bot = msg.get("bot", "")
-
-                # 🔹 Asegurar que "bot" siempre se almacena como JSON válido
-                if not isinstance(bot, dict):  # Si "bot" no es ya un diccionario
-                    try:
-                        bot = json.loads(bot)  # Intentar convertirlo de string JSON a dict
-                    except (json.JSONDecodeError, TypeError):
-                        bot = {"respuesta": bot}  # Si falla, lo envolvemos en un diccionario
-
-                historial_limpio.append({"usuario": usuario, "bot": bot})
-
-        # 🔹 Convertimos todo a JSON serializable antes de enviarlo a Supabase
-        data = {
-            "user_id": state.user_id,
-            "categoria_activa": state.categoria_activa,
-            "historial": historial_limpio,
-            "last_message": state.last_message,
-            "last_response": state.last_response,
-            "checkout_date": state.checkout_date,
-            "is_closed": state.is_closed,
-            "idioma": state.idioma,
-            "created_at": state.created_at,
-            "datos_categoria": json.dumps(state.datos_categoria, ensure_ascii=False) if state.datos_categoria else "{}"
+        # ✅ Acceder a los atributos de `ConversationState` correctamente
+        conversation_data = {
+            "categoria_activa": state.categoria_activa,  # ❌ state["categoria_activa"] → ✅ state.categoria_activa
+            "historial": json.dumps(state.historial, ensure_ascii=False),  # ❌ state["historial"] → ✅ state.historial
+            "datos_categoria": json.dumps(state.datos_categoria, ensure_ascii=False),  # ❌ state["datos_categoria"] → ✅ state.datos_categoria
+            "is_closed": state.is_closed  # ❌ state["is_closed"] → ✅ state.is_closed
         }
 
-        # 🔹 DEBUG: Ver qué se está enviando a Supabase
-        print("📌 datos_categoria antes de guardar en Supabase:", json.dumps(state.datos_categoria, indent=4, ensure_ascii=False))
-        print("📌 Datos que se intentan guardar en Supabase:", json.dumps(data, indent=4))
+        print(f"📌 Guardando datos dinámicos en `conversaciones` para usuario con teléfono {state.numero_telefono}...")
 
-        # 🔹 Guardar en Supabase
-        response = supabase.table("conversation_state").upsert(data).execute()
-
-        # 🔹 Verificar respuesta de Supabase
+        response = supabase.table("dinamicos").update(conversation_data).eq("numero_telefono", state.numero_telefono).execute()
+        
         if response.data:
-            print(f"✅ Estado guardado en Supabase para el usuario {state.user_id}")
-        else:
-            print(f"❌ Error al guardar en Supabase. Respuesta: {response}")
+            print(f"✅ Conversación guardada correctamente en `conversaciones` para usuario con teléfono {state.numero_telefono}.")
+            return response.data  # ✅ Devolvemos los datos guardados
+        
+        return None  # 🚨 En caso de que no haya datos en la respuesta
 
     except Exception as e:
-        print(f"❌ Error inesperado en save_conversation_state: {str(e)}")
-###############################################################################
-# Función para cerrar conversación si ha expirado
-###############################################################################
+        print(f"❌ Error en `save_dynamic_state`: {e}")
+        return None  # 🚨 Si hay un error, retornamos `None`
 ###############################################################################
 # Base de datos simulada de restaurantes
 ###############################################################################
+
 RESTAURANTES_FAKE = [
     {"id": 1, "nombre": "Mamma Mia", "tipo_cocina": "italiano", "budget": "barato"},
     {"id": 2, "nombre": "La Tagliatella", "tipo_cocina": "italiano", "budget": "medio"},
@@ -175,15 +196,15 @@ def query_restaurantes(tipo_cocina=None, budget=None, exclude_id=None):
         and (exclude_id is None or r["id"] != exclude_id)
     ]
 
-def obtener_historial_usuario(user_id: str):
+def obtener_historial_usuario(numero_telefono: str):
     """
     Obtiene el estado de conversación del usuario y construye su historial reciente.
     """
-    conv_state = get_conversation_state(user_id)
+    conv_state = get_dynamic_state(numero_telefono)
     
     historial = "\n".join([
         f'Usuario: "{msg["usuario"]}"\nBot: "{msg["bot"]}"' 
-        for msg in conv_state.historial[-10:]
+        for msg in conv_state["historial"][-10:]
     ])
 
     return conv_state, historial

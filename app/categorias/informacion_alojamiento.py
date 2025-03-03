@@ -1,7 +1,8 @@
 import os
 import json
 from dotenv import load_dotenv
-from app.database import get_conversation_state, save_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
+from openai import OpenAI
 from openai import OpenAI
 from app.categorias.tipo_informacion.handle_instalaciones import handle_apartment_info
 from app.categorias.tipo_informacion.handle_normas import handle_normas_info
@@ -17,7 +18,7 @@ if not api_key:
 client = OpenAI(api_key=api_key)
 
 
-def categorizar_pregunta_informacion(user_id, user_message,nombre_apartamento):
+def categorizar_pregunta_informacion(numero, user_message,nombre_apartamento):
     """
     Clasifica el mensaje del usuario en una de las siguientes categorías:
 
@@ -27,7 +28,7 @@ def categorizar_pregunta_informacion(user_id, user_message,nombre_apartamento):
     """
 
     # 🔹 **1️⃣ Obtener estado del usuario (Memoria en Supabase)**
-    conv_state = get_conversation_state(user_id)
+    conv_state = get_dynamic_state(numero)
 
     # 🔹 **2️⃣ Construcción de memoria híbrida (Supabase + Ventana de tokens)**
     historial = []
@@ -83,11 +84,11 @@ def categorizar_pregunta_informacion(user_id, user_message,nombre_apartamento):
 
         # 🔹 **5️⃣ Redirigir la consulta a la función correspondiente**
         if category_result.get("Categoria") == "Instalaciones":
-            return handle_apartment_info(user_id, user_message,nombre_apartamento)
+            return handle_apartment_info(numero, user_message,nombre_apartamento)
         elif category_result.get("Categoria") == "Normas":
-            return handle_normas_info(user_id, user_message,nombre_apartamento)
+            return handle_normas_info(numero, user_message,nombre_apartamento)
         elif category_result.get("Categoria") == "Penalizaciones":
-            return handle_penalizacion_info(user_id, user_message,nombre_apartamento)
+            return handle_penalizacion_info(numero, user_message,nombre_apartamento)
     except Exception as e:
         print(f"❌ Error en clasificación de categoría: {e}")
         return {"Categoria": "No clasificado"}  # Por defecto

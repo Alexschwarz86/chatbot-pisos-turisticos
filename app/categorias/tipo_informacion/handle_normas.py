@@ -1,12 +1,11 @@
 import os
 import json
 from dotenv import load_dotenv
-from app.database import get_conversation_state, save_conversation_state, supabase
-
+from app.database import get_dynamic_state, save_dynamic_state,supabase
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_normas_info(user_id, user_message, nombre_apartamento):
+def handle_normas_info(numero, user_message, nombre_apartamento):
     """
     Recupera la información del apartamento directamente desde Supabase 
     y responde con los detalles solicitados de las instalaciones.

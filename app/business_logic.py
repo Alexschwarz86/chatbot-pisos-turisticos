@@ -1,16 +1,18 @@
-from app.database import get_conversation_state, save_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
+from openai import OpenAI
 from app.categorias.recomendaciones import categorizar_recomendacion
 from app.categorias.manejo_limpieza import handle_cleaning_request 
 from app.categorias.averia_estancia import handle_issue_report
 from app.categorias.informacion_alojamiento import categorizar_pregunta_informacion
-def handle_intents(user_id, analysis_result, user_message, conv_state, nombre_apartamento) -> str:
+
+def handle_intents(numero_telefono, analysis_result, user_message, conv_state, nombre_apartamento) -> str:
     """
-    Recibe el ID de usuario, el resultado del análisis NLU y el mensaje original.
+    Recibe el número de teléfono, el resultado del análisis NLU y el mensaje original.
     Gestiona la intención detectada y devuelve la respuesta adecuada.
     """
 
-    # 🔹 **1️⃣ Obtener estado del usuario (Memoria a Largo Plazo - Supabase)**
-    conversation_state = get_conversation_state(user_id)
+    # 🔹 **1️⃣ Obtener estado del usuario (Memoria Dinámica - Supabase)**
+    conversation_state = get_dynamic_state(numero_telefono)
 
     intenciones = analysis_result.get("intenciones", [])
     idioma = analysis_result.get("idioma", "es")  # Si no hay idioma detectado, asumimos español
@@ -22,15 +24,15 @@ def handle_intents(user_id, analysis_result, user_message, conv_state, nombre_ap
     
     # 🔹 **2️⃣ Procesar cada intención detectada**
     for intent in intenciones:
-        text = dispatch_intent(conversation_state, intent, user_message, idioma, nombre_apartamento)  # ✅ Ahora se pasa correctamente
+        text = dispatch_intent(conversation_state, intent, user_message, idioma, nombre_apartamento)
         responses.append(text)
 
     # 🔹 **3️⃣ Guardar conversación actualizada en Supabase**
-   
+    save_dynamic_state(conversation_state)
 
     return "\n".join([str(resp) if isinstance(resp, dict) else resp for resp in responses])
 
-def dispatch_intent(conversation_state, intent, user_message, idioma,nombre_apartamento) -> str:
+def dispatch_intent(conversation_state, intent, user_message, idioma, nombre_apartamento) -> str:
     """
     Redirige cada intención a su respectiva función de manejo.
     """
@@ -39,16 +41,16 @@ def dispatch_intent(conversation_state, intent, user_message, idioma,nombre_apar
     idioma = idioma if idioma in ["es", "en"] else "es"
 
     if intent == "informacion_alojamiento":
-        return categorizar_pregunta_informacion(conversation_state.user_id, user_message, nombre_apartamento)  # ✅ Corrección
+        return categorizar_pregunta_informacion(conversation_state.numero_telefono, user_message, nombre_apartamento)
 
     elif intent == "averia_estancia":
-        return handle_issue_report(conversation_state.user_id, user_message)
+        return handle_issue_report(conversation_state.numero_telefono, user_message)
 
     elif intent == "servicios_adicionales":
-        return handle_cleaning_request(conversation_state,user_message)
+        return handle_cleaning_request(conversation_state, user_message)
 
     elif intent == "recomendaciones_personalizadas":
-     return categorizar_recomendacion(conversation_state.user_id, user_message,nombre_apartamento)
+        return categorizar_recomendacion(conversation_state.numero_telefono, user_message, nombre_apartamento)
 
     elif intent == "descuentos_promociones":
         return descuentos_promociones(idioma)
@@ -61,7 +63,6 @@ def dispatch_intent(conversation_state, intent, user_message, idioma,nombre_apar
 
     else:
         return _sin_intencion_respuesta(idioma)
-
 
 # 📌 **Funciones auxiliares para otras intenciones**
 def proporcionar_normas_casa(idioma):

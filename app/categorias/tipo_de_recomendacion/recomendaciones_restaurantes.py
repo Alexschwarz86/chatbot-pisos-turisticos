@@ -1,6 +1,6 @@
 import json
 from openai import OpenAI
-from app.database import query_restaurantes, save_conversation_state, get_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
 import os
 
 # Cargar la API Key de OpenAI
@@ -9,13 +9,13 @@ client = OpenAI(api_key=api_key)
 
 from datetime import datetime
 
-def handle_recomendaciones(user_id, user_message):
+def handle_recomendaciones(numero, user_message,):
     """
     Maneja solicitudes de recomendación de restaurantes utilizando memoria híbrida.
     """
 
     # 🔹 **1️⃣ Obtener estado del usuario (Memoria a Largo Plazo - Supabase)**
-    conv_state = get_conversation_state(user_id)
+    conv_state = get_dynamic_state(numero)
 
     # 🔹 **2️⃣ Construcción de memoria híbrida (Supabase + Ventana de tokens)**
     historial = []
@@ -40,12 +40,12 @@ def handle_recomendaciones(user_id, user_message):
     🔹 **NO devuelvas texto plano, siempre responde en formato JSON sin backticks.**  
 
     📌 **Estructura de respuesta esperada:**
-    {{
+    {
         "tipo_cocina": "<tipo de comida o 'No definido'>",
         "budget": "<presupuesto o 'No definido'>",
         "mas_informacion": "<información extra o 'No definido'>",
         "respuesta_al_cliente": "<pregunta para el usuario o null>"
-    }}
+    }
 
     📌 **Datos actuales en memoria:**  
     - **Tipo de comida:** {conv_state.datos_categoria.get("tipo_cocina", "No definido")}
@@ -95,7 +95,7 @@ def handle_recomendaciones(user_id, user_message):
         print("📌 datos_categoria actualizado antes de guardar ya te he pillado:", json.dumps(conv_state.datos_categoria, indent=4, ensure_ascii=False))
 
         # Guardamos la nueva información en Supabase
-        save_conversation_state(conv_state)
+        save_dynamic_state(conv_state.to_dict())
     else:
         print("⚠️ La respuesta de OpenAI no contiene datos válidos para actualizar `datos_categoria`.")
 

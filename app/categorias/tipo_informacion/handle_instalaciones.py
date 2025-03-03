@@ -1,12 +1,11 @@
 import os
 import json
 from dotenv import load_dotenv
-from app.database import get_conversation_state, save_conversation_state, supabase
-
+from app.database import get_dynamic_state, save_dynamic_state,supabase
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_apartment_info(user_id, user_message, nombre_apartamento):
+def handle_apartment_info(numero, user_message, nombre_apartamento):
     """
     Recupera la información del apartamento directamente desde Supabase 
     y responde con los detalles solicitados de las instalaciones.
@@ -70,9 +69,9 @@ El siguiente JSON contiene TODAS las instalaciones disponibles en el apartamento
 
 # 🔹 **Ejemplo de uso**
 if __name__ == "__main__":
-    user_id = "44"  # ID de ejemplo
+    numero = "44"  # ID de ejemplo
     nombre_apartamento = "Apartamento Sol"  # Nombre del apartamento asignado
     user_message = "¿El apartamento tiene aire acondicionado y WiFi?"  # Pregunta de ejemplo
 
-    response = handle_apartment_info(user_id, user_message, nombre_apartamento)
+    response = handle_apartment_info(numero, user_message, nombre_apartamento)
     print(response)

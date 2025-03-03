@@ -1,24 +1,24 @@
 import os
 import json
 from datetime import datetime
-from app.database import get_conversation_state, save_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
 from openai import OpenAI
 
 # Cargar la API Key de OpenAI
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
-def handle_transporte(user_id, user_message,):
+def handle_transporte(numero_telefono, user_message):
     """
     Maneja solicitudes de transporte utilizando solo GPT-4 sin APIs externas.
     """
 
     # 🔹 **1️⃣ Obtener estado del usuario**
-    conv_state = get_conversation_state(user_id)
+    conv_state = get_dynamic_state(numero_telefono)
 
     # 🔹 **2️⃣ Construcción de memoria híbrida**
     historial = []
-    for msg in conv_state.historial[-10:]:  
+    for msg in conv_state["historial"][-10:]:  
         if isinstance(msg, dict) and "usuario" in msg and "bot" in msg:
             historial.append({"role": "user", "content": str(msg["usuario"])})
             bot_response = msg["bot"]
@@ -33,7 +33,7 @@ def handle_transporte(user_id, user_message,):
     **Reglas Clave**:
     1. Usa **Rodalies de Cataluña (trenes)**, **buses interurbanos** y **taxis** como opciones principales.
     2. Proporciona **horarios aproximados** y **precios orientativos** si el usuario los solicita. 
-   - Si no tienes datos exactos, indica que son estimaciones basadas en información común.
+       - Si no tienes datos exactos, indica que son estimaciones basadas en información común.
     3. **Si el trayecto es específico**, intenta dar la ruta más sencilla en el transporte disponible (indicando origen y destino).
     4. **Si no se especifica origen**, asume **Calafell** como punto de partida.
     5. Al **recomendar un transporte**, facilita la **web de referencia** solo si aún no se ha dado antes al usuario.
@@ -47,9 +47,9 @@ def handle_transporte(user_id, user_message,):
 
 
     📌 **Datos actuales en memoria:**  
-    - **Origen:** {conv_state.datos_categoria.get("origen", "No definido")}
-    - **Destino:** {conv_state.datos_categoria.get("destino", "No definido")}
-    - **Tipo de transporte preferido:** {conv_state.datos_categoria.get("transporte", "No definido")}
+    - **Origen:** {conv_state["datos_categoria"].get("origen", "No definido")}
+    - **Destino:** {conv_state["datos_categoria"].get("destino", "No definido")}
+    - **Tipo de transporte preferido:** {conv_state["datos_categoria"].get("transporte", "No definido")}
 
     📌 **Conversación Reciente (Ventana de Tokens)**:
     {json.dumps(historial, ensure_ascii=False, indent=2)}
@@ -91,17 +91,17 @@ def handle_transporte(user_id, user_message,):
         print("❌ OpenAI no devolvió un JSON válido. Usando respuesta normal.")
         return response_text  
 
-    # 🔹 **7️⃣ Actualizar y guardar la información en memoria**
+    # 🔹 **7️⃣ Actualizar y guardar la información en memoria dinámica**
     if isinstance(result, dict):  
-        conv_state.datos_categoria["origen"] = result.get("origen", conv_state.datos_categoria.get("origen", "No definido"))
-        conv_state.datos_categoria["destino"] = result.get("destino", conv_state.datos_categoria.get("destino", "No definido"))
-        conv_state.datos_categoria["transporte"] = result.get("transporte", conv_state.datos_categoria.get("transporte", "No definido"))
+        conv_state["datos_categoria"]["origen"] = result.get("origen", conv_state["datos_categoria"].get("origen", "No definido"))
+        conv_state["datos_categoria"]["destino"] = result.get("destino", conv_state["datos_categoria"].get("destino", "No definido"))
+        conv_state["datos_categoria"]["transporte"] = result.get("transporte", conv_state["datos_categoria"].get("transporte", "No definido"))
 
         # 📌 Debugging: Verificar actualización correcta
-        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state.datos_categoria, indent=4, ensure_ascii=False))
+        print("📌 datos_categoria actualizado antes de guardar:", json.dumps(conv_state["datos_categoria"], indent=4, ensure_ascii=False))
 
         # Guardamos la nueva información en Supabase
-        save_conversation_state(conv_state)
+        save_dynamic_state(conv_state.to_dict())
     else:
         print("⚠️ La respuesta de OpenAI no contiene datos válidos para actualizar `datos_categoria`.")
 

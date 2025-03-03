@@ -2,7 +2,7 @@ import os
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
-from app.database import get_conversation_state
+from app.database import get_dynamic_state
 from app.categorias.tipo_de_recomendacion.recomendaciones_restaurantes import handle_recomendaciones 
 from app.categorias.tipo_de_recomendacion.actividades_ocio import handle_actividades_ocio
 from app.categorias.tipo_de_recomendacion.transporte_movilidad import handle_transporte
@@ -16,7 +16,7 @@ if not api_key:
 client = OpenAI(api_key=api_key)
 
 
-def categorizar_recomendacion(user_id, user_message,nombre_apartamento):
+def categorizar_recomendacion(numero, user_message,nombre_apartamento):
     """
     Clasifica el mensaje del usuario en una de las siguientes categorías:
     
@@ -28,7 +28,7 @@ def categorizar_recomendacion(user_id, user_message,nombre_apartamento):
     """
 
     # 🔹 **1️⃣ Obtener estado del usuario (Memoria en Supabase)**
-    conv_state = get_conversation_state(user_id)
+    conv_state = get_dynamic_state(numero)
 
     # 🔹 **2️⃣ Construcción de memoria híbrida (Supabase + Ventana de tokens)**
     historial = []
@@ -84,11 +84,11 @@ def categorizar_recomendacion(user_id, user_message,nombre_apartamento):
 
         # 🔹 **5️⃣ Redirigir la consulta a la función correspondiente**
         if category_result.get("Categoria") == "Restaurantes y Comida":
-            return handle_recomendaciones(user_id, user_message)
+            return handle_recomendaciones(numero, user_message)
         elif category_result.get("Categoria") == "Actividades y Ocio":
-            return handle_actividades_ocio(user_id, user_message)
+            return handle_actividades_ocio(numero, user_message)
         elif category_result.get("Categoria") == "Transporte y Movilidad":
-            return handle_transporte(user_id, user_message,nombre_apartamento)
+            return handle_transporte(numero, user_message,nombre_apartamento)
     except Exception as e:
         print(f"❌ Error en clasificación de categoría: {e}")
         return {"Categoria": "Servicios y Otros"}  # Por defecto

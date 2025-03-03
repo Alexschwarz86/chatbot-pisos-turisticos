@@ -2,22 +2,22 @@ import os
 import json
 from dotenv import load_dotenv
 from datetime import datetime
-from app.database import get_conversation_state, save_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
 
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_cleaning_request(user_id, user_message):
+def handle_cleaning_request(numero, user_message):
     """
     Maneja solicitudes de limpieza en la estancia.
     Pregunta los datos faltantes y agenda cuando toda la información esté completa.
     """
-    # 🔹 **1️⃣ Obtener estado del usuario (Memoria en Supabase)**
-    conv_state = get_conversation_state(user_id)
+    # 🔹 **1️⃣ Obtener estado dinámico del usuario en Supabase**
+    conv_state = get_dynamic_state(numero)
 
     # 🔹 **2️⃣ Revisar si ya tiene la información necesaria**
-    fecha = conv_state.datos_categoria.get("fecha", "No definido")
-    hora = conv_state.datos_categoria.get("hora", "No definido")
+    fecha = conv_state["datos_categoria"].get("fecha", "No definido")
+    hora = conv_state["datos_categoria"].get("hora", "No definido")
 
     # 🔹 **3️⃣ Generar el prompt para OpenAI para verificar si faltan datos**
     info_prompt = f"""
@@ -44,6 +44,7 @@ def handle_cleaning_request(user_id, user_message):
     }}
     """
     print("📌 Prompt enviado a OpenAI:\n", info_prompt) 
+
     # 🔹 **4️⃣ Llamada a OpenAI para procesar el mensaje**
     from openai import OpenAI
     api_key = os.getenv("OPENAI_API_KEY")
@@ -64,12 +65,12 @@ def handle_cleaning_request(user_id, user_message):
     except json.JSONDecodeError:
         return "❌ Hubo un problema al procesar tu solicitud, intenta de nuevo."
 
-    # 🔹 **6️⃣ Guardar información nueva**
+    # 🔹 **6️⃣ Guardar información nueva en `dinamic`**
     if isinstance(result, dict):
-        conv_state.datos_categoria["fecha"] = result.get("fecha", fecha)
-        conv_state.datos_categoria["hora"] = result.get("hora", hora)
+        conv_state["datos_categoria"]["fecha"] = result.get("fecha", fecha)
+        conv_state["datos_categoria"]["hora"] = result.get("hora", hora)
 
-        save_conversation_state(conv_state)  # Guardamos en Supabase
+        save_dynamic_state(conv_state)  # Guardamos en Supabase
 
     # 🔹 **7️⃣ Si falta información, preguntar al usuario**
     if result.get("respuesta_al_cliente") is not None:
@@ -81,8 +82,8 @@ def handle_cleaning_request(user_id, user_message):
 
 # 🔹 **Ejemplo de uso**
 if __name__ == "__main__":
-    user_id = "44"  # ID de ejemplo
+    numero = "644123456"  # Simulación de número de teléfono en lugar de user_id
     user_message = "¿Podrían limpiar mi apartamento el próximo lunes a las 10 de la mañana?"  # Mensaje de ejemplo
 
-    response = handle_cleaning_request(user_id, user_message)
+    response = handle_cleaning_request(numero, user_message)
     print(response)

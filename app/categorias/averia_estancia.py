@@ -1,27 +1,26 @@
 import os
 import json
 from dotenv import load_dotenv
-from app.database import get_conversation_state, save_conversation_state
+from app.database import get_dynamic_state, save_dynamic_state
 
 # 🔹 Cargar variables de entorno
 load_dotenv()
 
-def handle_issue_report(user_id, user_message):
+def handle_issue_report(numero, user_message):
     """
     Maneja solicitudes de averías o problemas en el piso.
     Extrae el problema y una breve descripción sin preguntar por la ubicación.
     """
 
-    # 🔹 **1️⃣ Obtener estado del usuario (Memoria en Supabase)**
-    conv_state = get_conversation_state(user_id)
+    # 🔹 **1️⃣ Obtener estado dinámico del usuario en Supabase**
+    conv_state = get_dynamic_state(numero)
 
     # 🔹 **2️⃣ Revisar si ya tiene la información necesaria**
     problema = conv_state.datos_categoria.get("problema", "No definido")
     descripcion = conv_state.datos_categoria.get("descripcion", "No definido")
-
     # 🔍 **Debugging: Ver datos en memoria**
     print(f"📌 user_message recibido: {user_message}")
-    print(f"📌 Estado actual en memoria: {conv_state.datos_categoria}")
+    print(f"📌 Estado actual en memoria: {conv_state['datos_categoria']}")
 
     # 🔹 **3️⃣ Generar el prompt para OpenAI**
     issue_prompt = f"""
@@ -61,24 +60,22 @@ def handle_issue_report(user_id, user_message):
     except json.JSONDecodeError:
         return "❌ Hubo un problema al procesar tu solicitud, intenta de nuevo."
 
-    # 🔹 **6️⃣ Guardar información nueva**
+    # 🔹 **6️⃣ Guardar información nueva en `dinamic`**
     if isinstance(result, dict):
         conv_state.datos_categoria["problema"] = result.get("problema", problema)
         conv_state.datos_categoria["descripcion"] = result.get("descripcion", descripcion)
-
-        save_conversation_state(conv_state)  # Guardamos en Supabase
+        save_dynamic_state(conv_state.to_dict())  # Guardamos en Supabase
 
     # 🔹 **7️⃣ Confirmar el reporte**
-    return confirm_issue_report(conv_state, user_id)
+    return confirm_issue_report(conv_state, numero)
 
 
-def confirm_issue_report(conv_state, user_id):
+def confirm_issue_report(conv_state, numero):
     """
     Confirma el reporte del problema con la información recopilada.
     """
     problema = conv_state.datos_categoria.get("problema", "No definido")
-    descripcion = conv_state.datos_categoria.get("descripcion", "No definido")
-
+    descripcion = conv_state.datos_categoria.get("descripcion", "No definido")   
     if problema == "No definido":
         return "❌ Error: No se puede reportar el problema porque falta información."
 
@@ -86,8 +83,8 @@ def confirm_issue_report(conv_state, user_id):
 
 # 🔹 **Ejemplo de uso**
 if __name__ == "__main__":
-    user_id = "44"  # ID de ejemplo
+    numero = "644123456"  # Simulación de número de teléfono en lugar de user_id
     user_message = "No sale agua caliente en la ducha, pero no sé por qué."  # Mensaje de ejemplo
 
-    response = handle_issue_report(user_id, user_message)
+    response = handle_issue_report(numero, user_message)
     print(response)
