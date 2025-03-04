@@ -52,6 +52,6 @@ def chat_endpoint(chat_request: ChatRequest):
     conv_state.historial = conv_state.historial[-10:]
 
     # 🔹 7️⃣ Guardar la conversación en Supabase
-    save_dynamic_state(conv_state)  # ✅ Convertimos el objeto a diccionario antes de guardar
+    save_dynamic_state(conv_state.to_dict())  # ✅ Convertimos el objeto a diccionario antes de guardar
 
     return {"reply": reply}

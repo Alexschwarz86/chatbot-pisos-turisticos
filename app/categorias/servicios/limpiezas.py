@@ -70,7 +70,7 @@ def handle_limpieza(numero, user_message):
         conv_state["datos_categoria"]["fecha"] = result.get("fecha", fecha)
         conv_state["datos_categoria"]["hora"] = result.get("hora", hora)
 
-        save_dynamic_state(conv_state.to_dict)  # Guardamos en Supabase
+        save_dynamic_state(conv_state.to_dict())  # Guardamos en Supabase
 
     # 🔹 **7️⃣ Si falta información, preguntar al usuario**
     if result.get("respuesta_al_cliente") is not None:

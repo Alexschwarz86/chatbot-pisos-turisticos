@@ -21,43 +21,30 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 ###############################################################################
 
 class ConversationState:
-    def __init__(self, numero_telefono, categoria_activa="recomendaciones_restaurantes", data=None):
+    def __init__(self, numero_telefono, categoria_activa="recomendaciones_restaurantes", is_closed=False, idioma="es", created_at=None, historial=None, datos_categoria=None, data=None):
         self.numero_telefono = numero_telefono
         self.categoria_activa = categoria_activa
-        self.is_closed = data.get("is_closed", False) if data else False
-        self.idioma = data.get("idioma", "es") if data else "es"
-        self.created_at = data["created_at"] if data and "created_at" in data else datetime.utcnow().isoformat()
+        self.is_closed = is_closed if data is None else data.get("is_closed", False)
+        self.idioma = idioma if data is None else data.get("idioma", "es")
+        self.created_at = created_at if created_at else (data["created_at"] if data and "created_at" in data else datetime.utcnow().isoformat())
 
-        # 🔹 Historial seguro (Manejo correcto de listas y JSON)
-        self.historial = []
+        # Manejo seguro del historial
+        self.historial = historial if isinstance(historial, list) else []
         if data and "historial" in data:
-            if isinstance(data["historial"], str):
-                try:
-                    self.historial = json.loads(data["historial"])
-                except (json.JSONDecodeError, TypeError):
-                    self.historial = []
-            elif isinstance(data["historial"], list):
-                self.historial = data["historial"]
-            else:
+            try:
+                self.historial = json.loads(data["historial"]) if isinstance(data["historial"], str) else data["historial"]
+            except (json.JSONDecodeError, TypeError):
                 self.historial = []
 
-        # 🔹 Manejo seguro de datos de categorías
-        self.datos_categoria = {}
-        if data:
-            raw_datos_categoria = data.get("datos_categoria", "{}")
-            if isinstance(raw_datos_categoria, str):
-                try:
-                    self.datos_categoria = json.loads(raw_datos_categoria)
-                except (json.JSONDecodeError, TypeError):
-                    self.datos_categoria = {}
-            elif isinstance(raw_datos_categoria, dict):
-                self.datos_categoria = raw_datos_categoria
-            else:
+        # Manejo seguro de `datos_categoria`
+        self.datos_categoria = datos_categoria if isinstance(datos_categoria, dict) else {}
+        if data and "datos_categoria" in data:
+            try:
+                self.datos_categoria = json.loads(data["datos_categoria"]) if isinstance(data["datos_categoria"], str) else data["datos_categoria"]
+            except (json.JSONDecodeError, TypeError):
                 self.datos_categoria = {}
-        else:
-            print("⚠️ `datos_categoria` no encontrado en Supabase, asignando `{}`")
-            self.datos_categoria = {}
 
+                
     def to_dict(self):
         """Convierte el objeto en un diccionario para guardarlo en la base de datos."""
         return {
@@ -110,27 +97,56 @@ def get_dynamic_state(numero_telefono: str) -> ConversationState:
 
 def save_dynamic_state(state):
     """
-    Guarda solo los datos dinámicos del usuario en `dinamicos`.
+    Guarda o actualiza el estado del usuario en `dinamicos` en Supabase.
     """
     try:
-        if isinstance(state, ConversationState):  
-            state = state.to_dict()  # ✅ Convertir a diccionario solo si es necesario
+        if not isinstance(state, ConversationState):
+            print("⚠️ `save_dynamic_state` recibió un diccionario en lugar de un `ConversationState`. Convirtiendo...")
+            print("📌 Diccionario recibido antes de conversión:", json.dumps(state, indent=4, ensure_ascii=False))
 
-        print("📌 Estado antes de guardar en Supabase:", json.dumps(state, indent=4, ensure_ascii=False))
+            if isinstance(state, dict):
+                expected_keys = {"numero_telefono", "categoria_activa", "is_closed", "idioma", "created_at", "historial", "datos_categoria"}
+                received_keys = set(state.keys())
 
-        response = supabase.table("dinamicos").upsert(state).execute()
+                print(f"📌 Claves esperadas: {expected_keys}")
+                print(f"📌 Claves recibidas: {received_keys}")
+
+                # Si hay claves extra, eliminarlas antes de la conversión
+                extra_keys = received_keys - expected_keys
+                if extra_keys:
+                    print(f"⚠️ Eliminando claves inesperadas: {extra_keys}")
+                    for key in extra_keys:
+                        del state[key]
+
+                # ✅ Asegurar que `historial` sea una lista
+                if isinstance(state.get("historial"), str):
+                    try:
+                        state["historial"] = json.loads(state["historial"])
+                    except json.JSONDecodeError:
+                        state["historial"] = []  # Si falla, dejarlo vacío
+
+                # ✅ Asegurar que `datos_categoria` sea un diccionario
+                if isinstance(state.get("datos_categoria"), str):
+                    try:
+                        state["datos_categoria"] = json.loads(state["datos_categoria"])
+                    except json.JSONDecodeError:
+                        state["datos_categoria"] = {}  # Si falla, dejarlo vacío
+
+                state = ConversationState(**state)  # Ahora debe convertirse sin error
+
+        # 📌 Continuar con el guardado en Supabase
+        print(f"📌 Guardando datos en `dinamicos` para usuario {state.numero_telefono}...")
+
+        response = supabase.table("dinamicos").upsert(state.to_dict(), on_conflict=["numero_telefono"]).execute()
 
         if response.data:
-            print(f"✅ Conversación guardada correctamente en `dinamicos` para usuario con teléfono {state['numero_telefono']}.")
+            print(f"✅ Datos actualizados correctamente en `dinamicos` para usuario {state.numero_telefono}.")
             return True
-        else:
-            print(f"❌ No se guardaron datos en Supabase.")
-            return False
 
     except Exception as e:
         print(f"❌ Error en `save_dynamic_state`: {e}")
-        return False
 
+    return False
 ###############################################################################
 # Base de datos simulada de restaurantes
 ###############################################################################
