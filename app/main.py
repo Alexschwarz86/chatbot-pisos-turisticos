@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from app.database import get_dynamic_state,save_dynamic_state
+from app.database import get_dynamic_state
 from openai import OpenAI
 from app.nlu import analyze_message
 from app.business_logic import handle_intents  # Usamos la versión centralizada
@@ -50,8 +50,5 @@ def chat_endpoint(chat_request: ChatRequest):
 
     # 🔹 6️⃣ Mantener solo los últimos 10 mensajes en memoria y Supabase
     conv_state.historial = conv_state.historial[-10:]
-
-    # 🔹 7️⃣ Guardar la conversación en Supabase
-    save_dynamic_state(conv_state.to_dict())  # ✅ Convertimos el objeto a diccionario antes de guardar
 
     return {"reply": reply}

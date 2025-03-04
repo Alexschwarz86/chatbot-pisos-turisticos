@@ -28,7 +28,7 @@ def handle_intents(numero_telefono, analysis_result, user_message, conv_state, n
         responses.append(text)
 
     # 🔹 **3️⃣ Guardar conversación actualizada en Supabase**
-    save_dynamic_state(conversation_state)
+    #save_dynamic_state(conversation_state)
 
     return "\n".join([str(resp) if isinstance(resp, dict) else resp for resp in responses])
 
